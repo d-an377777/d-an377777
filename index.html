@@ -352,8 +352,17 @@ for(let i=0;i<pg.lines.length;i++){
  }
 }
 // Keep Japanese as continuous, selectable text. Never split kana into tappable syllables.
-function lookupTokens(text){return escapeText(String(text||''))}
-const content=blocks.map(b=>`<section class="rn-mobile-card" id="rnMobileQ${b.number}"><div class="rn-mobile-number">Câu ${b.number}</div><div class="rn-mobile-question" lang="ja">${b.lines.map(l=>l.runs.map(run=>run.u?`<u>${lookupTokens(run.t)}</u>`:lookupTokens(run.t)).join('')).join('<div class="rn-mobile-break"></div>')}</div><div class="rn-question-actions"><button type="button" class="rn-selection-lookup" data-n2-selected="1">Tra phần đã bôi đen</button></div>${b.choices.length?`<div class="rn-mobile-options">${b.choices.map(c=>`<div class="rn-mobile-choice"><button type="button" data-q="${b.number}" data-a="${c.n}" class="rn-mobile-option ${r.answers[b.number]===c.n?'rn-selected':''}" aria-pressed="${r.answers[b.number]===c.n}" ${r.finished?'disabled':''}><b>${c.n}</b><span lang="ja">${escapeText(c.text)}</span></button><button type="button" class="rn-option-lookup" data-n2-lookup="${escapeText(String(c.text).trim())}" aria-label="Tra Gemini: ${escapeText(String(c.text).trim())}" title="Tra Gemini">⌕</button></div>`).join('')}</div>`:'<p class="rn-muted">Xem các lựa chọn trong văn bản gốc bên dưới.</p>'}</section>`).join('');
+function lookupTokens(text){
+ const source=String(text||'');
+ if(!window.Intl||!Intl.Segmenter)return escapeText(source);
+ const segmenter=new Intl.Segmenter('ja',{granularity:'word'});
+ return Array.from(segmenter.segment(source),part=>{
+   const word=part.segment;
+   if(!part.isWordLike||!/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(word))return escapeText(word);
+   return `<span class="rn-jp-word" data-n2-word="${escapeText(word)}" role="button" tabindex="0" aria-label="Tra Gemini: ${escapeText(word)}">${escapeText(word)}</span>`;
+ }).join('');
+}
+const content=blocks.map(b=>`<section class="rn-mobile-card" id="rnMobileQ${b.number}"><div class="rn-mobile-number">Câu ${b.number}</div><div class="rn-mobile-question" lang="ja">${b.lines.map(l=>l.runs.map(run=>lookupTokens(run.t)).join('')).join('<div class="rn-mobile-break"></div>')}</div><div class="rn-question-actions"><button type="button" class="rn-selection-lookup" data-n2-selected="1">Tra phần đã bôi đen</button></div>${b.choices.length?`<div class="rn-mobile-options">${b.choices.map(c=>`<div class="rn-mobile-choice"><button type="button" data-q="${b.number}" data-a="${c.n}" class="rn-mobile-option ${r.answers[b.number]===c.n?'rn-selected':''}" aria-pressed="${r.answers[b.number]===c.n}" ${r.finished?'disabled':''}><b>${c.n}</b><span lang="ja">${escapeText(c.text)}</span></button><button type="button" class="rn-option-lookup" data-n2-lookup="${escapeText(String(c.text).trim())}" aria-label="Tra Gemini: ${escapeText(String(c.text).trim())}" title="Tra Gemini">⌕</button></div>`).join('')}</div>`:'<p class="rn-muted">Xem các lựa chọn trong văn bản gốc bên dưới.</p>'}</section>`).join('');
 const mobile=document.createElement('div');mobile.className='rn-mobile-reader';mobile.innerHTML=`<div class="rn-mobile-reader-head"><strong>Đọc & chọn đáp án · Trang ${page+1}</strong><button type="button" data-mobile-paper="1">Xem bố cục gốc</button></div>${content||'<p>Trang này chưa có câu hỏi tách riêng. Xem văn bản gốc bên dưới.</p>'}`;
 native.before(mobile);
 const showOriginal=sessionStorage.getItem('aurora_n2_original_layout')==='yes';paper.classList.toggle('rn-show-original',showOriginal);
@@ -736,6 +745,21 @@ sheet.addEventListener('click',e=>{if(e.target===sheet||e.target.closest('#mobil
 <script id="aurora-n2-text-reader-v2">(()=>{'use strict';
 const root=document.getElementById('realN2');if(!root)return;
 function explain(word,card){word=String(word||'').trim();if(!word)return;const context=card?.querySelector('.rn-mobile-question')?.textContent?.trim().slice(0,450)||'';const bar=document.getElementById('paperLookupBar');if(!bar)return;const display=bar.querySelector('#paperLookupText');if(display)display.textContent=word;bar.hidden=false;window.AURORA_SELECTED_CONTEXT=context;window.AURORA_INLINE_AI?.(word,context,true);window.getSelection()?.removeAllRanges()}
+// Direct word taps are independent of iOS text selection and the global underline lookup.
+root.addEventListener('pointerdown',e=>{if(e.target.closest('.rn-jp-word'))e.preventDefault()},true);
+root.addEventListener('click',e=>{
+ const word=e.target.closest('.rn-jp-word');
+ if(!word)return;
+ e.preventDefault();e.stopImmediatePropagation();
+ window.getSelection()?.removeAllRanges();
+ explain(word.dataset.n2Word,word.closest('.rn-mobile-card'));
+},true);
+root.addEventListener('keydown',e=>{if(e.target.matches('.rn-jp-word')&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.target.click()}},true);
 root.addEventListener('click',e=>{const lookup=e.target.closest('[data-n2-lookup]');if(lookup){e.preventDefault();e.stopImmediatePropagation();explain(lookup.dataset.n2Lookup,lookup.closest('.rn-mobile-card'));return}const selected=e.target.closest('[data-n2-selected]');if(selected){e.preventDefault();e.stopImmediatePropagation();const card=selected.closest('.rn-mobile-card');const selection=window.getSelection();const word=selection?.toString()?.trim()||'';if(!word){selected.textContent='Hãy bôi đen từ trước';setTimeout(()=>{if(selected.isConnected)selected.textContent='Tra phần đã bôi đen'},1600);return}if(!card?.querySelector('.rn-mobile-question')?.contains(selection.anchorNode)){return}explain(word.slice(0,150),card)}},true);
 })();</script>
-</body></html>
+<style id="aurora-n2-direct-word-tap">
+#realN2 .rn-mobile-question .rn-jp-word{display:inline;cursor:pointer;user-select:none!important;-webkit-user-select:none!important;-webkit-touch-callout:none!important;touch-action:manipulation;text-decoration:underline dotted rgba(201,180,120,.55);text-underline-offset:5px;border-radius:3px}
+#realN2 .rn-mobile-question .rn-jp-word:active,#realN2 .rn-mobile-question .rn-jp-word:focus-visible{background:rgba(207,181,112,.22);outline:1px solid rgba(207,181,112,.55)}
+#realN2 .rn-mobile-question{user-select:none!important;-webkit-user-select:none!important}
+#realN2 .rn-mobile-question .rn-jp-word{font:inherit}
+</style></body></html>
