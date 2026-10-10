@@ -738,4 +738,19 @@ root.addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const
  #realN2 .rn-mobile-card{padding:12px!important}
 }
 </style>
+
+<!-- Mobile lookup layout hotfix: isolated, no global text segmentation -->
+<style id="aurora-lookup-viewport-fix">
+#paperLookupBar, #paperLookupBar *{box-sizing:border-box!important}
+#paperLookupBar{position:fixed!important;left:50%!important;right:auto!important;top:auto!important;bottom:calc(82px + env(safe-area-inset-bottom,0px))!important;transform:translateX(-50%)!important;width:min(540px,calc(100vw - 24px))!important;max-width:calc(100vw - 24px)!important;min-width:0!important;max-height:min(68dvh,620px)!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain!important;z-index:2147483000!important;margin:0!important;padding:12px!important;border-radius:16px!important;contain:layout style!important}
+#paperLookupBar[hidden]{display:none!important}
+#paperLookupBar>div:first-of-type{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important;width:100%!important}
+#paperLookupBar>div:first-of-type>button{display:block!important;width:100%!important;min-width:0!important;margin:0!important;min-height:40px!important;padding:8px 5px!important;white-space:normal!important;font-size:13px!important}
+#paperLookupText{font-size:16px!important;line-height:1.4!important;max-height:52px!important;overflow:auto!important;overflow-wrap:anywhere!important}
+#paperLookupBar>#paperAiPanel{width:100%!important;max-width:100%!important;min-width:0!important;max-height:none!important;overflow:visible!important;padding:12px!important;margin-top:9px!important}
+#paperAiAnswer{font-size:14px!important;line-height:1.65!important;overflow-wrap:anywhere!important;word-break:normal!important;white-space:pre-wrap!important}
+@media(max-width:600px){#paperLookupBar{left:12px!important;right:12px!important;transform:none!important;width:auto!important;max-width:none!important;max-height:58dvh!important;bottom:calc(88px + env(safe-area-inset-bottom,0px))!important}#paperLookupBar>#paperAiPanel{max-height:none!important}#paperLookupBar>div:first-of-type>button{font-size:12px!important}}
+@media(max-height:620px){#paperLookupBar{max-height:52dvh!important}}
+</style>
+<script id="aurora-lookup-safe-viewport">(()=>{'use strict';const bar=document.getElementById('paperLookupBar');if(!bar)return;bar.setAttribute('role','dialog');bar.setAttribute('aria-label','Tra cứu Gemini');document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!bar.hidden){bar.hidden=true;window.getSelection()?.removeAllRanges()}});})();</script>
 </body></html>
