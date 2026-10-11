@@ -599,21 +599,21 @@ async function pull(){if(!active||busy)return;busy=true;try{let remote=await req
 panel.onclick=async e=>{let action=e.target.closest('[data-sync]')?.dataset.sync;try{if(action==='close'){panel.close?.();panel.removeAttribute('open')}if(action==='show'){let input=panel.querySelector('#sheetsCode');input.type=input.type==='password'?'text':'password'}if(action==='newcode'){panel.querySelector('#sheetsCode').value=random(16);say('Mã mới tạo · bấm Kết nối để bắt đầu bản sao lưu mới')}if(action==='connect'){let url=panel.querySelector('#sheetsURL').value.trim(),code=panel.querySelector('#sheetsCode').value.trim();if(!/^https:\/\/script\.google\.com\/macros\/s\/[a-zA-Z0-9_-]+\/exec$/.test(url))throw Error('Nhập đúng link Apps Script kết thúc bằng /exec');if(code.length<6||code.length>128)throw Error('Mã cần 6–128 ký tự. Có thể dùng Gmail kèm đuôi riêng, hoặc Tạo mã mới');if(url!==cfg.url||code!==cfg.code){if(cfg.pending)throw Error('Lần gửi trước chưa xác nhận. Hãy giải quyết trước khi đổi mã.');cfg.url=url;cfg.code=code;cfg.revision=undefined;cfg.dirty=true;cfg.fingerprint='';persist()}await connect(true)}if(action==='push')await push();if(action==='pull')await pull();if(action==='disconnect'){if(cfg.pending)throw Error('Lần gửi chưa xác nhận; hãy chờ hoặc thử Lưu lại trước khi ngắt');active=false;cfg.code='';cfg.write='';cfg.id='';cfg.revision=undefined;clearTimeout(timer);persist();say('Đã ngắt · giữ nguyên link Apps Script đã lưu và tiến độ máy này');draw()}if(action==='copy'){let text='Link: '+(cfg.url||panel.querySelector('#sheetsURL').value)+'\nMã sao lưu: '+(cfg.code||panel.querySelector('#sheetsCode').value);try{await navigator.clipboard.writeText(text);say('Đã sao chép link và mã để ghép máy')}catch{let input=panel.querySelector('#sheetsCode');input.type='text';input.select();say('Hãy sao chép link và mã đang hiện')}}if(action==='reset-progress'){
   if(busy||cfg.pending)throw Error('Đang có thao tác đồng bộ chưa hoàn tất. Hãy chờ và thử lại.');
   if(!cfg.url||!cfg.id||!cfg.write)throw Error('Cần kết nối đúng mã Google Sheets trước khi xóa đồng thời hai nơi.');
-  const answer=prompt('CẢNH BÁO: XÓA TOÀN BỘ TIẾN ĐỘ\n\nSẽ xóa dữ liệu học trên máy NÀY và bản lưu Google Sheets của mã hiện tại. Các máy khác chưa được xóa tại chỗ nhưng sẽ không còn bản lưu đám mây để khôi phục.\n\nNhập chính xác: XOA TAT CA');
-  if(answer!=='XOA TAT CA'){say('Đã hủy, dữ liệu được giữ nguyên');return}
-  download();
-  if(!confirm('ĐÃ YÊU CẦU TẢI FILE DỰ PHÒNG.\n\nHãy kiểm tra file đã tải thành công.\n\nXác nhận LẦN CUỐI: XÓA VĨNH VIỄN tiến độ trên máy này VÀ Google Sheets?')){say('Đã hủy, dữ liệu được giữ nguyên');return}
+  if(!confirm('Xóa toàn bộ tiến độ học trên thiết bị này và bản lưu Google Sheets của mã đang kết nối?\n\nThao tác này không thể hoàn tác nếu không có bản sao lưu.')){say('Đã hủy xóa tiến độ.');return}
+  if(confirm('Bạn có muốn tải bản sao lưu trước khi xóa không?\n\nOK: Tải bản sao lưu.\nCancel: Bỏ qua và tiếp tục xóa.')){
+    try{download()}catch(e){say('Không tải được bản dự phòng: '+e.message+'. Chưa xóa dữ liệu.');return}
+  }
   busy=true;
   try{
     const op=random(16),base=cfg.revision||0;
     await fetch(cfg.url,{method:'POST',mode:'no-cors',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'reset',id:cfg.id,write:cfg.write,op,base})});
     let receipt;
-    for(let i=0;i<10;i++){
-      await new Promise(r=>setTimeout(r,1200));
+    for(let i=0;i<20;i++){
+      await new Promise(r=>setTimeout(r,1500));
       receipt=await request('status',{op});
       if(!receipt.pending)break;
     }
-    if(!receipt||receipt.pending)throw Error('Chưa xác nhận được thao tác xóa trên Google Sheets. Không xóa dữ liệu máy này. Hãy kiểm tra trạng thái trước khi thử lại.');
+    if(!receipt||receipt.pending)throw Error('Google Sheets chưa phản hồi xác nhận xóa. Tiến độ trên máy vẫn được giữ nguyên để tránh mất dữ liệu. Kiểm tra bản Apps Script đã Deploy rồi thử lại.');
     if(!receipt.ok)throw Error(receipt.conflict?'Sheets đã thay đổi từ thiết bị khác. Hãy đồng bộ lại trước khi reset.':receipt.error||'Không xóa được bản Sheets.');
     const meta=await request('meta');
     if(meta.exists)throw Error('Google Sheets vẫn còn bản lưu. Không xóa dữ liệu máy này.');
