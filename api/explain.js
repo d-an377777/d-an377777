@@ -46,13 +46,25 @@ async function geminiHandler(req, res) {
       if(upstream.status===400&&!/API_KEY_INVALID|API key not valid/i.test(JSON.stringify(data.error||{}))&&requestBody.generationConfig.thinkingConfig){
         delete requestBody.generationConfig.thinkingConfig;upstream=await send();try{data=await upstream.json()}catch{data={}}
       }
+      // If structured-output parameters are rejected, try plain JSON once.
+      // Keep validation below: malformed output is never saved as a notebook entry.
+      if(upstream.status===400&&!/API_KEY_INVALID|API key not valid/i.test(JSON.stringify(data.error||{}))&&/schema|mime|generation|parameter|unsupported|not supported|unknown name|invalid argument/i.test(data.error?.message||'')){
+        delete requestBody.generationConfig.responseSchema;
+        delete requestBody.generationConfig.responseMimeType;
+        delete requestBody.generationConfig.thinkingConfig;
+        requestBody.contents[0].parts[0].text+='\nTrả đúng JSON với 10 trường chuỗi: term, kind, level, reading, hanviet, structure, meaning, example, translation, caution.';
+        upstream=await send();try{data=await upstream.json()}catch{data={}}
+      }
       if(!upstream.ok){
         const invalidKey=upstream.status===400&&/API_KEY_INVALID|API key not valid/i.test(JSON.stringify(data.error||{}));
         if(upstream.status===429){cooldowns.set(key,Date.now()+retryDelay(upstream,data));lastError={status:429,error:'Tất cả key có thể dùng đều đang giới hạn lượt tra. Hãy thử lại sau.'};continue}
         if(upstream.status===401||upstream.status===403||invalidKey){cooldowns.set(key,Date.now()+300000);lastError={status:503,error:'Các key chưa có quyền hoặc không hợp lệ. Kiểm tra key và quyền dự án trên Vercel.'};continue}
         if(upstream.status===404){lastError={status:502,error:'Không tìm thấy GEMINI_MODEL hoặc key chưa có quyền dùng model này.'};continue}
         if(upstream.status>=500){lastError={status:502,error:'Gemini tạm thời chưa phản hồi. Hãy thử lại sau.'};continue}
-        return res.status(502).json({error:upstream.status===404?'Không tìm thấy model Gemini. Kiểm tra GEMINI_MODEL trên Vercel.':'Cấu hình Gemini chưa phù hợp. Kiểm tra model và cập nhật api/explain.js.',keyCount:keys.length});
+        let reason=String(data.error?.message||'Nhà cung cấp không trả lý do.');
+        for(const secret of [...keys,...openaiKeys()])reason=reason.split(secret).join('[ẩn key]');
+        reason=reason.replace(/AIza[\w-]+|sk-[\w-]+/g,'[ẩn key]').slice(0,450);
+        return res.status(502).json({error:'Gemini HTTP '+upstream.status+' · '+model+': '+reason,code:'gemini_request_rejected',upstreamStatus:upstream.status,model,apiVersion:'aurora-ai-3',keyCount:keys.length});
       }
       const raw=(data.candidates?.[0]?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text||'').join('');
       let entry;try{
@@ -113,7 +125,7 @@ async function openaiSingle(body,key,deadline){
  }catch(e){return {status:504,data:{error:e.name==='AbortError'?'Các dịch vụ AI phản hồi quá lâu. Hãy thử lại.':'Chưa kết nối được OpenAI. Hãy thử lại.'}}}finally{clearTimeout(timer)}
 }
 module.exports=async function handler(req,res){
- res.setHeader('Cache-Control','no-store');
+ res.setHeader('Cache-Control','no-store');res.setHeader('X-Aurora-API-Version','aurora-ai-3');
  let body=req.body;if(typeof body==='string'){try{body=JSON.parse(body)}catch{body=null}}
  if(req.method!=='POST')return res.status(405).json({error:'Chỉ hỗ trợ POST.'});
  if(!body||typeof body.text!=='string'||!body.text.trim()||body.text.length>500)return res.status(400).json({error:'Chọn từ hoặc câu ngắn, tối đa 500 ký tự.'});
