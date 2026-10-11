@@ -4,4 +4,20 @@ self.addEventListener('install',event=>{self.skipWaiting()});
 self.addEventListener('activate',event=>{event.waitUntil(self.clients.claim())});
 function clean(input){const u=new URL(input);u.search='';u.hash='';return u.href}
 self.addEventListener('message',event=>{if(event.data?.type!=='CACHE_PAGE')return;event.waitUntil((async()=>{try{const u=new URL(event.data.url);if(u.origin!==self.location.origin||u.pathname.startsWith('/api/'))throw Error('Invalid page');const response=await fetch(u.href,{cache:'no-store'});if(!response.ok||!response.headers.get('content-type')?.includes('text/html'))throw Error('Not HTML');const html=await response.clone().text();if(!html.includes('aurora-scenic-studio')||!html.includes('</html>'))throw Error('Incomplete page');const cache=await caches.open(CACHE);await cache.put(clean(u.href),response);event.source?.postMessage({type:'AURORA_OFFLINE_READY'})}catch{event.source?.postMessage({type:'AURORA_OFFLINE_ERROR'})}})())});
-self.addEventListener('fetch',event=>{if(event.request.method!=='GET'||event.request.mode!=='navigate')return;const u=new URL(event.request.url);if(u.origin!==self.location.origin||u.pathname.startsWith('/api/'))return;event.respondWith((async()=>{try{const response=await fetch(event.request);if(response.ok&&response.headers.get('content-type')?.includes('text/html')){const html=await response.clone().text();if(html.includes('aurora-scenic-studio')&&html.includes('</html>')){const cache=await caches.open(CACHE);if(await cache.match(clean(u.href)))await cache.put(clean(u.href),response.clone())}}return response}catch{const cache=await caches.open(CACHE),saved=await cache.match(clean(u.href));return saved||new Response('Chưa lưu trang này để dùng offline. Mở bản HTML đã tải về máy.',{status:503,headers:{'Content-Type':'text/plain;charset=utf-8'}})}})())});
+self.addEventListener('fetch',event=>{
+ if(event.request.method!=='GET'||event.request.mode!=='navigate')return;
+ const u=new URL(event.request.url);if(u.origin!==self.location.origin||u.pathname.startsWith('/api/'))return;
+ const network=fetch(event.request);
+ // Keep the network response streaming; validation and cache refresh run separately.
+ event.waitUntil(network.then(async response=>{
+  if(!response.ok||!response.headers.get('content-type')?.includes('text/html'))return;
+  const copy=response.clone(),cache=await caches.open(CACHE);
+  if(!await cache.match(clean(u.href)))return;
+  const html=await copy.clone().text();
+  if(html.includes('aurora-scenic-studio')&&html.includes('</html>'))await cache.put(clean(u.href),copy);
+ }).catch(()=>{}));
+ event.respondWith(network.catch(async()=>{
+  const cache=await caches.open(CACHE),saved=await cache.match(clean(u.href));
+  return saved||new Response('Chưa lưu trang này để dùng offline.',{status:503,headers:{'Content-Type':'text/plain;charset=utf-8'}});
+ }));
+});
