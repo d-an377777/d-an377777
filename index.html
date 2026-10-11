@@ -562,7 +562,7 @@ let cfg={};try{cfg=JSON.parse(localStorage.getItem(KEY))||{}}catch{}const random
 const button=document.createElement('button');button.id='cloudSyncLaunch';button.textContent='☁ Đồng bộ';const panel=document.createElement('dialog');panel.id='cloudSyncPanel';document.body.append(panel);(document.querySelector('.top-tools')||document.querySelector('.header-inner')||document.body).append(button);
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function say(s){status=s;button.textContent=busy?'☁ Đang lưu':remoteNew?'☁ Bản mới':'☁ Đồng bộ';let node=panel.querySelector('[data-sync-status]');if(node)node.textContent=s}
-function draw(){panel.innerHTML=`<header><h2>Đồng bộ Google Sheets</h2><button data-sync="close" aria-label="Đóng">×</button></header><p data-sync-status role="status">${esc(status)}</p><p>Mã thiết bị: <b>${esc(cfg.device)}</b></p><label>Đường link Apps Script (tự lưu; chỉ đổi khi bạn chỉnh sửa)<input id="sheetsURL" type="url" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(cfg.url||'')}"></label><label>Mã sao lưu tự đặt (có thể dùng Gmail)<input id="sheetsCode" type="password" autocomplete="off" value="${esc(cfg.code||'')}" placeholder="Ví dụ: ten@gmail.com#482916"></label><div class="cloud-pair"><button data-sync="show">Hiện / ẩn mã</button><button data-sync="newcode">Tạo mã mới</button></div><button data-sync="connect">Kết nối / nhận tiến độ theo mã</button>${active?'<button data-sync="push">Lưu lên Sheets ngay</button><button data-sync="pull">Nhận tiến độ mới</button><button data-sync="disconnect">Ngắt đồng bộ máy này</button>':''}<button data-sync="copy">Sao chép thông tin ghép máy</button><button data-sync="backup">Tải bản dự phòng máy này</button><button data-sync="restore">Khôi phục trước lần nhận gần nhất</button><button data-sync="reset-progress" class="cloud-danger">Xóa toàn bộ tiến độ (máy + Sheets)</button><p class="cloud-small">Xóa tiến độ máy này VÀ bản lưu Google Sheets của mã đang kết nối. Cần cập nhật Apps Script hỗ trợ reset. Thao tác không thể hoàn tác nếu không có bản dự phòng.</p><p class="cloud-small">Hai máy nhập đúng cùng mã, kể cả chữ hoa và chữ thường. Có thể dùng tên hoặc Gmail kèm đuôi riêng; đây là mã truy cập, không phải đăng nhập Google. Mã thiết bị giúp biết máy nào đã lưu. Mã sao lưu mở được tiến độ: hãy giữ riêng. Dữ liệu trên Sheets được mã hóa; quên mã thì không giải mã được.</p><p class="cloud-small">Tự lưu sau khoảng 15 giây kể từ thay đổi. Trước khi đổi máy, chờ thông báo “Đã lưu lên Sheets”.</p>`}
+function draw(){panel.innerHTML=`<header><h2>Đồng bộ Google Sheets</h2><button data-sync="close" aria-label="Đóng">×</button></header><p data-sync-status role="status">${esc(status)}</p><p>Mã thiết bị: <b>${esc(cfg.device)}</b></p><label>Đường link Apps Script (tự lưu; chỉ đổi khi bạn chỉnh sửa)<input id="sheetsURL" type="url" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(cfg.url||'')}"></label><label>Mã sao lưu tự đặt (có thể dùng Gmail)<input id="sheetsCode" type="password" autocomplete="off" value="${esc(cfg.code||'')}" placeholder="Ví dụ: ten@gmail.com#482916"></label><div class="cloud-pair"><button data-sync="show">Hiện / ẩn mã</button><button data-sync="newcode">Tạo mã mới</button></div><button data-sync="connect">Kết nối / nhận tiến độ theo mã</button>${active?'<button data-sync="push">Lưu lên Sheets ngay</button><button data-sync="pull">Nhận tiến độ mới</button><button data-sync="disconnect">Ngắt đồng bộ máy này</button>':''}<button data-sync="copy">Sao chép thông tin ghép máy</button><button data-sync="backup">Tải bản dự phòng máy này</button><button data-sync="restore">Khôi phục trước lần nhận gần nhất</button><button data-sync="reset-progress" class="cloud-danger">Xóa toàn bộ dữ liệu (máy + Sheets)</button><p class="cloud-small">Xóa tiến độ máy này VÀ bản lưu Google Sheets của mã đang kết nối. Cần cập nhật Apps Script hỗ trợ reset. Thao tác không thể hoàn tác nếu không có bản dự phòng.</p><p class="cloud-small">Hai máy nhập đúng cùng mã, kể cả chữ hoa và chữ thường. Có thể dùng tên hoặc Gmail kèm đuôi riêng; đây là mã truy cập, không phải đăng nhập Google. Mã thiết bị giúp biết máy nào đã lưu. Mã sao lưu mở được tiến độ: hãy giữ riêng. Dữ liệu trên Sheets được mã hóa; quên mã thì không giải mã được.</p><p class="cloud-small">Tự lưu sau khoảng 15 giây kể từ thay đổi. Trước khi đổi máy, chờ thông báo “Đã lưu lên Sheets”.</p>`}
 button.onclick=()=>{draw();panel.showModal?panel.showModal():panel.setAttribute('open','')};
 function choose(title,text,options,offerBackup=true){return new Promise(resolve=>{let d=document.createElement('dialog');d.className='cloud-choice';d.innerHTML=`<h2>${esc(title)}</h2><p>${esc(text)}</p>${offerBackup?'<button data-choice="backup">Tải bản dự phòng</button>':''}${options.map((x,i)=>`<button data-choice="${i}">${esc(x)}</button>`).join('')}`;document.body.append(d);d.addEventListener('cancel',e=>{e.preventDefault();d.remove();resolve(-1)});d.onclick=e=>{let c=e.target.closest('[data-choice]')?.dataset.choice;if(c==='backup'){download();return}if(c!==undefined){d.close?.();d.remove();resolve(+c)}};d.showModal?d.showModal():d.setAttribute('open','')})}
 function snapshot(){return {app:'aurora-sheets',version:1,at:0,data:Object.fromEntries(KEYS.map(k=>[k,localStorage.getItem(k)]))}}
@@ -586,7 +586,7 @@ async function decrypt(packet){
   obj.data=Object.fromEntries(KEYS.map(k=>[k,obj.data[k]??null]));
   return obj
 }
-function request(action,extra={}){return new Promise((resolve,reject)=>{let name='auroraSheets_'+random(12),script=document.createElement('script'),timeout=setTimeout(()=>done(null,Error('Không kết nối được Sheets. Kiểm tra link /exec và quyền Anyone.')),25000);function done(value,error){clearTimeout(timeout);delete window[name];script.remove();error?reject(error):resolve(value)}window[name]=data=>{if(data.ok||data.pending||data.conflict)done(data);else done(null,Error(data.status==='ok'?'Script chưa đúng bản đồng bộ NIHONGO. Hãy cập nhật Code.gs và triển khai bản mới.':data.error||'Sheets chưa sẵn sàng'))};let url=new URL(cfg.url);for(let [k,v] of Object.entries({action,id:cfg.id,callback:name,_:Date.now(),...extra}))url.searchParams.set(k,v);script.src=url.href;script.onerror=()=>done(null,Error('Không kết nối được Apps Script. Dữ liệu vẫn lưu trên máy.'));document.head.append(script)})}
+function request(action,extra={},waitMs=25000){return new Promise((resolve,reject)=>{let name='auroraSheets_'+random(12),script=document.createElement('script'),timeout=setTimeout(()=>done(null,Error('Không kết nối được Sheets. Kiểm tra link /exec và quyền Anyone.')),waitMs);function done(value,error){clearTimeout(timeout);delete window[name];script.remove();error?reject(error):resolve(value)}window[name]=data=>{if(data.ok||data.pending||data.conflict)done(data);else done(null,Error(data.status==='ok'?'Script chưa đúng bản đồng bộ NIHONGO. Hãy cập nhật Code.gs và triển khai bản mới.':data.error||'Sheets chưa sẵn sàng'))};let url=new URL(cfg.url);for(let [k,v] of Object.entries({action,id:cfg.id,callback:name,_:Date.now(),...extra}))url.searchParams.set(k,v);script.referrerPolicy='no-referrer';script.src=url.href;script.onerror=()=>done(null,Error('Không kết nối được Apps Script. Dữ liệu vẫn lưu trên máy.'));document.head.append(script)})}
 function download(){let data={app:'Aurora',version:4,at:new Date().toISOString(),values:Object.fromEntries(KEYS.filter(k=>localStorage.getItem(k)!==null).map(k=>[k,JSON.parse(localStorage.getItem(k))]))};let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'}));a.download='NIHONGO_tien_do_du_phong.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function localArchive(data,load=false){return new Promise((resolve,reject)=>{if(!window.indexedDB){reject(Error('Không lưu được bản dự phòng tự động. Hãy tải bản dự phòng trước.'));return}let req=indexedDB.open('aurora_sync_safety',1);req.onupgradeneeded=()=>req.result.createObjectStore('snapshots');req.onerror=()=>reject(req.error);req.onsuccess=()=>{let db=req.result,tx=db.transaction('snapshots',load?'readonly':'readwrite'),store=tx.objectStore('snapshots');let op=load?store.get('latest'):store.put(data,'latest');let value;op.onsuccess=()=>value=op.result;tx.oncomplete=()=>{db.close();resolve(load?value:true)};tx.onerror=()=>{db.close();reject(tx.error)}}})}
 async function apply(obj,revision){await localArchive(snapshot());window.AURORA_IMPORTING=true;active=false;for(let k of KEYS){if(obj.data[k]===null)remove.call(localStorage,k);else set.call(localStorage,k,obj.data[k])}cfg.revision=revision;cfg.dirty=false;cfg.fingerprint=await digest(JSON.stringify({...obj,at:0}));cfg.last=Date.now();cfg.pending=null;persist();location.reload()}
@@ -609,39 +609,39 @@ panel.onclick=async e=>{let action=e.target.closest('[data-sync]')?.dataset.sync
     if(!navigator.onLine)throw Error('Cần có mạng để xóa bản Google Sheets. Chưa xóa dữ liệu trên máy.');
     await derive();
     say('Đang xóa dữ liệu trên Google Sheets…');
+    const capability=await request('ping',{},12000);
+    if(!capability.resetDirect)throw Error('Link này đang chạy Apps Script cũ. Thay Code.gs bằng bản RESET_V3 rồi vào Triển khai → Quản lý triển khai → Chỉnh sửa → Phiên bản mới → Triển khai. Giữ nguyên link /exec, sau đó bấm Xóa lại.');
     if(cfg.pending){
-      const result=await settle();
-      if(result?.pending)throw Error('Lần lưu trước còn đang xử lý. Chờ một chút rồi bấm xóa lại.');
+      say('Đang kiểm tra lần lưu trước…');
+      const result=await request('status',{op:cfg.pending.op},12000);
+      if(result?.pending)throw Error('Lần lưu trước chưa được Sheets xác nhận. Chờ một chút rồi bấm Xóa lại.');
+      cfg.pending=null;persist();
     }
     let deleted=false;
     for(let attempt=0;attempt<3;attempt++){
       if(!cfg.resetPending){
-        const meta=await request('meta');
+        say('Đang lấy phiên bản Sheets hiện tại…');
+        const meta=await request('meta',{},12000);
         cfg.resetPending={op:random(16),base:meta.revision||0};persist();
       }
       const task=cfg.resetPending;
-      await fetch(cfg.url,{method:'POST',mode:'no-cors',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'reset',id:cfg.id,write:cfg.write,op:task.op,base:task.base})});
-      let receipt;
-      for(let i=0;i<20;i++){
-        await new Promise(r=>setTimeout(r,1500));
-        receipt=await request('status',{op:task.op});
-        if(!receipt.pending)break;
-      }
-      if(!receipt||receipt.pending)throw Error('Chưa nhận được xác nhận từ Sheets. Bấm Xóa lại để kiểm tra và tiếp tục cùng yêu cầu; web đã tạm dừng tự đồng bộ.');
+      say('Đang xóa trên Sheets · lần '+(attempt+1)+'/3 (tối đa 25 giây)…');
+      const receipt=await request('reset',{write:cfg.write,op:task.op,base:task.base},25000);
       if(receipt.conflict){cfg.resetPending=null;persist();continue}
-      if(!receipt.ok||receipt.deleted!==true)throw Error(receipt.error||'Apps Script chưa xác nhận xóa. Hãy triển khai bản script hỗ trợ reset.');
+      if(!receipt.ok||receipt.deleted!==true)throw Error(receipt.error||'Apps Script chưa xác nhận xóa.');
       deleted=true;break;
     }
     if(!deleted)throw Error('Thiết bị khác liên tục gửi dữ liệu. Tạm ngắt đồng bộ trên thiết bị đó rồi bấm Xóa lại.');
     window.AURORA_IMPORTING=true;
     for(const k of KEYS)remove.call(localStorage,k);
-    try{await localArchive(null)}catch{}
+    say('Sheets đã xóa · đang dọn dữ liệu trên máy…');
+    try{await Promise.race([localArchive(null),new Promise(r=>setTimeout(r,1500))])}catch{}
     cfg.code='';cfg.id='';cfg.write='';cfg.revision=undefined;cfg.pending=null;cfg.resetPending=null;cfg.dirty=false;cfg.fingerprint='';cryptoKey=null;persist();
     location.reload();return;
   }catch(err){
     active=false;clearTimeout(timer);
     throw Error(err.message+' Tiến độ trên máy vẫn được giữ; tự đồng bộ đã tạm dừng.');
-  }finally{busy=false;if(active&&cfg.dirty)timer=setTimeout(push,15000)}
+  }finally{busy=false;button.textContent=remoteNew?'☁ Bản mới':'☁ Đồng bộ';if(active&&cfg.dirty)timer=setTimeout(push,15000)}
 }if(action==='backup')download();if(action==='restore'){let obj=await localArchive(null,true);if(!obj)throw Error('Chưa có bản dự phòng trước lần nhận');if(await choose('Khôi phục máy này','Bản trước lần nhận gần nhất sẽ thay tiến độ đang mở. Nếu có kết nối, bạn có thể gửi lại lên Sheets.',['Khôi phục','Để sau'])===0){window.AURORA_IMPORTING=true;active=false;for(let k of KEYS){let v=obj.data[k];v===null?remove.call(localStorage,k):set.call(localStorage,k,v)}cfg.dirty=true;persist();location.reload()}}}catch(e){say(e.message)}};
 window.addEventListener('online',()=>{if(active)push();else if(cfg.url&&cfg.code)connect()});window.addEventListener('offline',()=>say('Mất mạng · học tiếp, tiến độ vẫn lưu trên máy'));document.addEventListener('visibilitychange',()=>{if(active&&document.hidden)push()});setInterval(async()=>{if(!active||busy||document.hidden||!navigator.onLine)return;try{let data=await request('meta');if(data.revision!==cfg.revision){remoteNew=true;say('Có bản mới từ máy '+data.device+' · bấm Nhận tiến độ mới')}else if(cfg.dirty)push()}catch(e){say(e.message)}},120000);if(cfg.url&&cfg.code)setTimeout(()=>connect(),1000);window.AURORA_SHEETS={push,pull,keys:KEYS};
 })();
