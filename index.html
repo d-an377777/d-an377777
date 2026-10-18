@@ -1075,7 +1075,7 @@ window.AURORA_KAIWA={open,context:()=>({group:state.group,query,register,kind,pa
 </style>
 <script id="aurora-gemini-notebook-v3">(()=>{'use strict';
 const fields={term:500,reading:500,hanviet:500,structure:1000,meaning:3400,example:4000,translation:4000,caution:500,kind:20,level:20};
-const labels={term:'Từ gốc / mẫu',reading:'Cách đọc',hanviet:'Âm Hán Việt',structure:'Từ loại / cách nối',meaning:'Nghĩa / cách dùng',example:'Ví dụ',translation:'Dịch ví dụ',caution:'Lưu ý'};
+const labels={term:'Thể nguyên dạng / mẫu',reading:'Cách đọc',hanviet:'Âm Hán Việt',structure:'Từ loại / cách nối',meaning:'Nghĩa / cách dùng',example:'Ví dụ',translation:'Dịch ví dụ',caution:'Lưu ý'};
 const cache=new Map();
 function normalize(raw){
  if(!raw||typeof raw!=='object'||Array.isArray(raw))throw Error('Câu trả lời phải là một đối tượng JSON.');
