@@ -1709,4 +1709,145 @@ window.AURORA_LOOKUP={lookup,selected,schedule,isMobile:()=>!!mobile,enabled,set
 window.AURORA_OPEN_LOOKUP=(term,context='')=>lookup({term:String(term||'').trim(),context,source:'Tra tại câu'},{manual:true});
 if(mobile){const b=document.createElement('button');b.id='mobileLookupButton';b.type='button';b.textContent='Tra từ · tự động';(document.querySelector('.header-inner .tools')||document.querySelector('.header-inner')).append(b);b.onclick=()=>{const d=document.createElement('dialog');d.id='mobileLookupSettings';d.className='nx-dialog';d.innerHTML='<header><h3>Tra khi bôi đen</h3><button data-close>×</button></header><label><input id="mobileAutoLookup" type="checkbox"> Tự tra sau 2 giây ngừng chọn</label><p>Tự hiện nghĩa trong web; không tự mở Phím tắt hoặc ứng dụng khác. Từ có sẵn được tra từ kho học. Nội dung khác cần dịch vụ giải thích trực tuyến.</p>';d.querySelector('input').checked=enabled();d.querySelector('input').onchange=e=>{AURORA_LOOKUP.setEnabled(e.target.checked);b.textContent=e.target.checked?'Tra từ · tự động':'Tra từ · đang tắt'};d.querySelector('[data-close]').onclick=()=>d.close();d.onclose=()=>d.remove();document.body.append(d);d.showModal()};if(!enabled())b.textContent='Tra từ · đang tắt'}
 })();
-</script></body></html>
+</script>
+<style id="aurora-exam-clock-style">
+#auroraExamClock{margin:14px 0;padding:16px;border:1px solid #567061;border-radius:16px;background:#17271f;color:#edf5ee;max-width:100%;box-sizing:border-box}
+#auroraExamClock *{box-sizing:border-box}
+#auroraExamClock .ec-row{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin:10px 0}
+#auroraExamClock button,#auroraExamClock select{background:#294438;color:#fff;border:1px solid #789383;border-radius:9px;padding:10px;min-height:43px;font:inherit}
+#auroraExamClock button:disabled{opacity:.45}
+#auroraExamClock .ec-time{font-size:clamp(25px,6vw,39px);font-weight:750;font-variant-numeric:tabular-nums}
+#auroraExamClock .ec-note{font-size:13px;color:#cadbd0;line-height:1.65}
+#auroraExamClock .ec-track{height:8px;background:#405347;border-radius:8px;overflow:hidden}
+#auroraExamClock .ec-track>div{height:100%;background:#83b79b;transition:width .4s}
+#auroraExamClock .ec-alert{color:#ffe2a2;font-weight:700;min-height:24px}
+#auroraExamClock .ec-plan{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}
+#auroraExamClock .ec-plan span{border:1px solid #506a5c;border-radius:8px;padding:5px 8px;font-size:12px}
+#auroraExamClock .ec-plan .active{border-color:#c5e4c8;background:#365642}
+@media(max-width:520px){#auroraExamClock{padding:12px}#auroraExamClock .ec-row button{flex:1 1 auto}#auroraExamClock select{max-width:100%}}
+</style>
+<script id="aurora-exam-clock-script">
+(()=>{
+'use strict';
+const KEY='aurora_exam_clock_v1', MIN=60000, TOTAL=105*MIN;
+const stages=[
+ {name:'Từ vựng + Ngữ pháp',at:0,end:40},
+ {name:'M10 · Đoản văn',at:40,end:50},
+ {name:'M11 · Trung văn',at:50,end:74},
+ {name:'M13 · Trường văn',at:74,end:86},
+ {name:'M12 · So sánh A–B',at:86,end:94},
+ {name:'M14 · Tìm thông tin',at:94,end:100},
+ {name:'Rà soát',at:100,end:105}
+];
+let data={status:'idle',elapsed:0,startedAt:0,exam:'',announced:[]};
+try{const d=JSON.parse(localStorage.getItem(KEY)||'null');if(d&&['idle','running','paused','finished'].includes(d.status))data={...data,...d};}catch(_){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(data))}catch(_){}};
+const elapsed=()=>Math.min(TOTAL,Math.max(0,data.elapsed+(data.status==='running'?Date.now()-data.startedAt:0)));
+const fmt=ms=>{let sec=Math.ceil(Math.max(0,ms)/1000);return String(Math.floor(sec/3600)).padStart(2,'0')+':'+String(Math.floor(sec%3600/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')};
+const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let box;
+function detectExams(){
+ const els=[...document.querySelectorAll('select')];
+ let found=els.find(e=>[...e.options].filter(o=>/20(1[0-9]|2[0-6])/.test(o.textContent)).length>=10);
+ return found?[...found.options].filter(o=>/20(1[0-9]|2[0-6])/.test(o.textContent)).map(o=>o.textContent.trim()):[];
+}
+function init(){
+ const root=document.getElementById('jlptView');if(!root||document.getElementById('auroraExamClock'))return;
+ box=document.createElement('section');box.id='auroraExamClock';box.setAttribute('aria-label','Đồng hồ luyện thi N2');
+ const names=detectExams();
+ box.innerHTML='<strong>⏱ Phòng thi N2 · Đồng hồ thời gian thực</strong><div class="ec-note">105 phút chung cho Từ vựng, Ngữ pháp và Đọc hiểu. Các mốc bên dưới là mục tiêu tự luyện, KHÔNG khóa phần thi. Nghe hiểu luyện riêng theo audio.</div><div class="ec-row"><label>Đề đang luyện <select id="ecExam"><option value="">Chọn đề trong phần luyện N2 bên dưới</option>'+names.map(n=>'<option>'+esc(n)+'</option>').join('')+'</select></label></div><div class="ec-row"><span class="ec-time" id="ecRemain">01:45:00</span><span id="ecStage"></span></div><div class="ec-track"><div id="ecBar"></div></div><div class="ec-plan">'+stages.map((x,i)=>'<span data-stage="'+i+'">'+esc(x.name)+' · '+(x.end-x.at)+'p</span>').join('')+'</div><div class="ec-alert" id="ecAlert" role="status" aria-live="polite"></div><div class="ec-row"><button type="button" id="ecStart">Bắt đầu</button><button type="button" id="ecPause">Tạm dừng</button><button type="button" id="ecReset">Làm lại</button><button type="button" id="ecJump">Chuyển sang mốc tiếp</button></div><div class="ec-note">Nhắc khi còn 2 phút mỗi mốc và khi đến mốc mới; có nhắc 15, 5, 1 phút cuối. Nếu đổi tab hoặc khóa màn hình, thời gian vẫn trôi. Khi tải lại trang, đồng hồ được khôi phục trên thiết bị này. Chế độ mô phỏng nghiêm túc: không tạm dừng.</div>';
+ const top=root.querySelector('.section-top');(top?.parentNode||root).insertBefore(box,top?.nextSibling||root.firstChild);
+ box.querySelector('#ecExam').value=data.exam||'';
+ box.querySelector('#ecExam').onchange=e=>{data.exam=e.target.value;save()};
+ box.querySelector('#ecStart').onclick=()=>{if(data.status==='finished')return;data.startedAt=Date.now();data.status='running';save();render()};
+ box.querySelector('#ecPause').onclick=()=>{if(data.status!=='running')return;data.elapsed=elapsed();data.status='paused';save();render()};
+ box.querySelector('#ecReset').onclick=()=>{if(!confirm('Xóa đồng hồ phiên hiện tại? Đáp án luyện đề vẫn giữ nguyên.'))return;data={status:'idle',elapsed:0,startedAt:0,exam:data.exam,announced:[]};save();render()};
+ box.querySelector('#ecJump').onclick=()=>{if(!['running','paused'].includes(data.status))return;let m=elapsed()/MIN,next=stages.find(x=>x.at>m+.001);if(!next)return;data.elapsed=next.at*MIN;data.startedAt=Date.now();data.announced=[];save();render()};
+ render();
+}
+function render(){
+ if(!box)return;
+ let e=elapsed(),minutes=e/MIN,stage=stages.find(x=>minutes<x.end)||stages.at(-1);
+ if(e>=TOTAL&&data.status==='running'){data.elapsed=TOTAL;data.status='finished';save();}
+ const remain=TOTAL-e;
+ box.querySelector('#ecRemain').textContent=fmt(remain);
+ box.querySelector('#ecStage').textContent=stage.name+' · còn '+fmt(Math.max(0,stage.end*MIN-e))+' theo kế hoạch';
+ box.querySelector('#ecBar').style.width=Math.min(100,e/TOTAL*100)+'%';
+ box.querySelectorAll('[data-stage]').forEach((el,i)=>el.classList.toggle('active',stages[i]===stage));
+ box.querySelector('#ecStart').disabled=data.status==='running'||data.status==='finished';
+ box.querySelector('#ecStart').textContent=data.status==='paused'?'Tiếp tục':'Bắt đầu';
+ box.querySelector('#ecPause').disabled=data.status!=='running';
+ box.querySelector('#ecJump').disabled=!['running','paused'].includes(data.status);
+ const a=box.querySelector('#ecAlert');
+ if(data.status==='finished'){a.textContent='Hết 105 phút · kết thúc phiên thi. Hãy nộp bài trong phần luyện đề.';return;}
+ if(data.status==='paused'){a.textContent='Đồng hồ đang tạm dừng.';return;}
+ if(data.status==='idle'){a.textContent='Chọn đề ở phần luyện bên dưới, rồi bấm Bắt đầu.';return;}
+ const messages=[];
+ for(let i=0;i<stages.length;i++){
+  const st=stages[i],bound=st.at*MIN;
+  if(i&&e>=bound&&e<bound+10000)messages.push(['stage'+i,'Đến mốc '+st.name+' · hãy cân nhắc chuyển phần.']);
+  if(e>=((st.end-2)*MIN)&&e<(st.end*MIN)&&e>=(st.at*MIN))messages.push(['near'+i,'Còn '+fmt(st.end*MIN-e)+' đến mốc kết thúc '+st.name+'.']);
+ }
+ for(const n of [15,5,1])if(remain<=n*MIN&&remain>(n-1)*MIN)messages.push(['final'+n,'Còn '+n+' phút toàn bài.']);
+ const unseen=messages.find(([id])=>!data.announced.includes(id));
+ if(unseen){data.announced.push(unseen[0]);a.textContent=unseen[1];save();}
+ else if(messages.length)a.textContent=messages.at(-1)[1];
+ else a.textContent='Đang tính giờ · tiếp tục làm bài.';
+}
+document.addEventListener('DOMContentLoaded',init);
+if(document.readyState!=='loading')init();
+setInterval(()=>{if(!box)init();render()},1000);
+document.addEventListener('visibilitychange',render);
+})();
+</script>
+
+<style id="aurora-loop-style">
+#auroraLoop{margin:12px 0;padding:14px;border:1px solid #688675;border-radius:14px;background:#192a22;color:#e9f3eb}
+#auroraLoop textarea,#auroraLoop select{display:block;width:100%;min-height:42px;padding:9px;border:1px solid #718a78;border-radius:8px;background:#263e31;color:#fff;font:inherit;margin:6px 0 12px}
+#auroraLoop textarea{min-height:68px;resize:vertical}
+#auroraLoop button{padding:10px;border-radius:8px;background:#365a46;color:white;border:1px solid #8caf98;margin:4px}
+#auroraLoop .al-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+#auroraLoop label{font-weight:600;font-size:13px}
+#auroraLoop p{font-size:13px;line-height:1.6}
+</style>
+<script id="aurora-loop-script">
+(()=>{
+'use strict';
+const KEY='aurora_n2_stressloop_v1';
+let db={};try{db=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(_){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(_){}};
+let panel=null;
+function currentExam(){const active=document.querySelector('#n2Practice [data-nx-exam]');return active?.getAttribute('data-nx-exam')||document.querySelector('#n2Practice h3')?.textContent?.trim()||'n2'}
+function currentQuestion(){return document.querySelector('#n2Practice .nx-question')?.id||'reading'}
+function getKey(){return currentExam()+'::'+currentQuestion()}
+function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+const steps=[
+ ['hypothesis','1 · Giải lần đầu: dự đoán ý đúng trước khi xem đáp án','Viết lý do chọn, không chép đáp án.'],
+ ['evidence','2 · Căn cứ: trích nguyên văn tiếng Nhật','Dán đúng câu/đoạn làm bằng chứng. Nếu chưa tìm được, ghi “chưa tìm được”.'],
+ ['trap','3 · Phân loại bẫy','Bán đúng|Tuyệt đối hóa|Đảo nguyên nhân|Lệch chủ thể|Lệch phạm vi|Sai thời điểm|Suy diễn|Chưa xác định'],
+ ['cross','4 · Kiểm nghiệm ở câu cùng dạng, năm khác','Ghi kỳ thi, số câu, điểm giống/khác. Chỉ kết luận khi đã đối chiếu câu thật.'],
+ ['rule','5 · Sửa quy tắc v2','Nêu dấu hiệu, cách làm và ngoại lệ.'],
+ ['retest','6 · Giải lại không nhìn đáp án','Viết kết luận sau khi ẩn lời giải, rồi tự đối chiếu.']
+];
+function mount(){
+ const root=document.getElementById('n2Practice');if(!root)return;
+ const visible=!!document.querySelector('#n2Practice .nx-question')&&root.offsetParent!==null;
+ if(!visible){if(panel)panel.hidden=true;return}
+ if(!panel){panel=document.createElement('section');panel.id='auroraLoop';panel.innerHTML='<strong>🧠 Vòng lặp phá đề · ghi chú theo từng câu</strong><p>Giải → tìm căn cứ → nhận diện bẫy → đối chiếu đề khác → nâng cấp quy tắc → giải lại. Ghi chú không tự suy diễn từ đáp án. Mở lời giải của web chỉ sau khi đã tự chọn.</p><div class="al-grid" id="alFields"></div><div><button type="button" id="alSave">Lưu ghi chú</button><button type="button" id="alRetest">Ẩn lời giải để làm lại</button><button type="button" id="alExport">Xuất nhật ký JSON</button></div><p id="alStatus" aria-live="polite"></p>';
+ panel.querySelector('#alSave').onclick=()=>{store();panel.querySelector('#alStatus').textContent='Đã lưu trên thiết bị.'};
+ panel.querySelector('#alRetest').onclick=()=>{store();document.querySelectorAll('#n2Practice .nx-score,#n2Practice .nx-detailed').forEach(el=>el.style.display='none');panel.querySelector('#alStatus').textContent='Đã ẩn phần giải thích đang hiển thị. Đáp án đã lưu trong web không bị xóa.'};
+ panel.querySelector('#alExport').onclick=()=>{store();const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='aurora-n2-stressloop.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
+ }
+ if(panel.parentNode!==root)root.insertBefore(panel,root.firstChild);
+ panel.hidden=false;
+ const key=getKey();
+ if(panel.dataset.key!==key){panel.dataset.key=key;const r=db[key]||{};panel.querySelector('#alFields').innerHTML=steps.map(([id,title,hint])=>'<label>'+esc(title)+(id==='trap'?'<select data-al="'+id+'"><option value="">Chưa phân loại</option>'+hint.split('|').map(t=>'<option '+(r[id]===t?'selected':'')+'>'+esc(t)+'</option>').join('')+'</select>':'<textarea data-al="'+id+'" placeholder="'+esc(hint)+'">'+esc(r[id]||'')+'</textarea>')+'</label>').join('');panel.querySelector('#alStatus').textContent='Ghi chú: '+esc(key)}
+}
+function store(){if(!panel||!panel.dataset.key)return;const o={};panel.querySelectorAll('[data-al]').forEach(e=>o[e.dataset.al]=e.value);o.updatedAt=new Date().toISOString();db[panel.dataset.key]=o;save()}
+document.addEventListener('input',e=>{if(e.target.closest('#auroraLoop'))store()});
+document.addEventListener('change',e=>{if(e.target.closest('#auroraLoop'))store()});
+setInterval(mount,1200);
+document.addEventListener('DOMContentLoaded',mount);
+})();
+</script>
+</body></html>
